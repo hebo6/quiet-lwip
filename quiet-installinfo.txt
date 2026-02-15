@@ -1,0 +1,13 @@
+-- Install configuration: "Debug"
+-- Installing: /usr/local/share/quiet/quiet-profiles.json
+-- Up-to-date: /usr/local/include
+-- Installing: /usr/local/include/quiet.h
+-- Installing: /usr/local/include/quiet-portaudio.h
+-- Installing: /usr/local/bin/quiet_encode_file
+-- Installing: /usr/local/bin/quiet_decode_file
+-- Installing: /usr/local/bin/quiet_encode_soundcard
+-- Installing: /usr/local/bin/quiet_decode_soundcard
+-- Installing: /usr/local/lib/libquiet.so
+-- Set non-toolchain portion of runtime path of "/usr/local/lib/libquiet.so" to "@rpath/libquiet.dylib"
+-- Installing: /usr/local/lib/libquiet.a
+
