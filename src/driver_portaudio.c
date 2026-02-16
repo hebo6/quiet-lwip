@@ -120,10 +120,18 @@ static err_t quiet_lwip_portaudio_init(struct netif *netif) {
     quiet_portaudio_encoder *e = quiet_portaudio_encoder_create(conf->encoder_opt,
             conf->encoder_device, conf->encoder_latency,
             conf->encoder_sample_rate, conf->encoder_sample_size);
+    if (!e) {
+        printf("failed to create encoder (check profile modulation/fec/crc settings)\n");
+        return ERR_VAL;
+    }
 
     quiet_portaudio_decoder *d = quiet_portaudio_decoder_create(conf->decoder_opt,
             conf->decoder_device, conf->decoder_latency,
             conf->decoder_sample_rate);
+    if (!d) {
+        printf("failed to create decoder (check profile modulation/fec/crc settings)\n");
+        return ERR_VAL;
+    }
 
     portaudio_eth_driver *driver = calloc(1, sizeof(portaudio_eth_driver));
     driver->encoder = e;
@@ -185,9 +193,14 @@ quiet_lwip_portaudio_interface *quiet_lwip_portaudio_create(quiet_lwip_portaudio
     addr.addr = local_address;
     nm.addr = netmask;
     gw.addr = gateway;
-    netif_add(interface, &addr, &nm,
+    struct netif *result = netif_add(interface, &addr, &nm,
               &gw, conf, quiet_lwip_portaudio_init,
               tcpip_input);
+    if (!result) {
+        printf("failed to initialize network interface\n");
+        free(interface);
+        return NULL;
+    }
     netif_set_up(interface);
     return interface;
 }
