@@ -107,16 +107,46 @@ int main(int argc, char **argv) {
     const char *fname = "/usr/local/share/quiet/quiet-profiles.json";
     conf->encoder_opt =
         quiet_encoder_profile_filename(fname, encoder_key);
+    if (!conf->encoder_opt) {
+        printf("failed to read encoder profile '%s' from %s\n", encoder_key, fname);
+        free(conf);
+        return 1;
+    }
     conf->decoder_opt =
         quiet_decoder_profile_filename(fname, decoder_key);
+    if (!conf->decoder_opt) {
+        printf("failed to read decoder profile '%s' from %s\n", decoder_key, fname);
+        free(conf);
+        return 1;
+    }
 
     conf->encoder_device = Pa_GetDefaultOutputDevice();
+    if (conf->encoder_device == paNoDevice) {
+        printf("no default output device found\n");
+        free(conf);
+        return 1;
+    }
     const PaDeviceInfo *device_info = Pa_GetDeviceInfo(conf->encoder_device);
+    if (!device_info) {
+        printf("failed to get output device info\n");
+        free(conf);
+        return 1;
+    }
     conf->encoder_sample_rate = device_info->defaultSampleRate;
     conf->encoder_latency = device_info->defaultLowOutputLatency;
 
     conf->decoder_device = Pa_GetDefaultInputDevice();
+    if (conf->decoder_device == paNoDevice) {
+        printf("no default input device found\n");
+        free(conf);
+        return 1;
+    }
     device_info = Pa_GetDeviceInfo(conf->decoder_device);
+    if (!device_info) {
+        printf("failed to get input device info\n");
+        free(conf);
+        return 1;
+    }
     conf->decoder_sample_rate = device_info->defaultSampleRate;
     conf->decoder_latency = device_info->defaultLowOutputLatency;
 
@@ -127,6 +157,12 @@ int main(int argc, char **argv) {
     quiet_lwip_portaudio_interface *interface =
         quiet_lwip_portaudio_create(conf, htonl(ipaddr), htonl(netmask), htonl(gateway));
     free(conf);
+
+    if (!interface) {
+        printf("failed to create quiet lwip portaudio interface\n");
+        Pa_Terminate();
+        return 1;
+    }
 
     quiet_lwip_portaudio_audio_threads *audio_threads =
         quiet_lwip_portaudio_start_audio_threads(interface);

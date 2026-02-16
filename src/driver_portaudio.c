@@ -5,6 +5,13 @@ static err_t quiet_lwip_portaudio_encode_frame(struct netif *netif,
                                                struct pbuf *p) {
     portaudio_eth_driver *driver = (portaudio_eth_driver *)netif->state;
 
+    size_t pkt_len = p->tot_len - ETH_PAD_SIZE;
+    if (pkt_len > driver->send_temp_len) {
+        printf("tx frame too large: %zu > %zu, dropped\n", pkt_len, driver->send_temp_len);
+        LINK_STATS_INC(link.drop);
+        return ERR_BUF;
+    }
+
     size_t len = pbuf2buf(driver->send_temp, p);
 
     quiet_portaudio_encoder_send(driver->encoder, driver->send_temp, len);
@@ -126,6 +133,7 @@ static err_t quiet_lwip_portaudio_init(struct netif *netif) {
         conf->encoder_sample_rate, conf->encoder_sample_size);
 
     if (!e) {
+        printf("failed to create portaudio encoder\n");
         return ERR_IF;
     }
 
@@ -134,6 +142,7 @@ static err_t quiet_lwip_portaudio_init(struct netif *netif) {
         conf->decoder_sample_rate);
 
     if (!d) {
+        printf("failed to create portaudio decoder\n");
         quiet_portaudio_encoder_destroy(e);
         return ERR_IF;
     }
@@ -195,14 +204,14 @@ quiet_lwip_portaudio_interface *quiet_lwip_portaudio_create(
     addr.addr = local_address;
     nm.addr = netmask;
     gw.addr = gateway;
-    interface = netif_add(interface, &addr, &nm, &gw, conf,
+    quiet_lwip_portaudio_interface *added_interface = netif_add(interface, &addr, &nm, &gw, conf,
                           quiet_lwip_portaudio_init, tcpip_input);
-    if (!interface) {
+    if (!added_interface) {
         free(interface);
         return NULL;
     }
-    netif_set_up(interface);
-    return interface;
+    netif_set_up(added_interface);
+    return added_interface;
 }
 
 void quiet_lwip_portaudio_destroy(quiet_lwip_portaudio_interface *interface) {
