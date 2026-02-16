@@ -95,3 +95,10 @@ install(TARGETS quiet_lwip_shared
         ARCHIVE DESTINATION lib)
 
 add_subdirectory(examples)
+
+install(TARGETS quiet_lwip ARCHIVE DESTINATION lib)
+install(DIRECTORY include/lwip DESTINATION include)
+install(FILES include/quiet-lwip.h DESTINATION include)
+if(PORTAUDIO)
+    install(FILES include/quiet-lwip-portaudio.h DESTINATION include)
+endif()
