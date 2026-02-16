@@ -153,6 +153,44 @@ void key_value_destroy(key_value_t *kv) {
 }
 
 int main(int argc, char **argv) {
+    const char *encoder_key = "audible-7k-channel-1";
+    const char *decoder_key = "audible-7k-channel-0";
+    const char *conf_path = NULL;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s [--conf <path>] [--enc-profile <name>] [--dec-profile <name>]\n\n"
+                   "Options:\n"
+                   "  --conf <path>             path to quiet-profiles.json\n"
+                   "  --enc-profile <name>      encoder profile to use (default: audible-7k-channel-1)\n"
+                   "  --dec-profile <name>      decoder profile to use (default: audible-7k-channel-0)\n"
+                   "  --help                    show this help message\n", argv[0]);
+            return 0;
+        }
+    }
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--conf") == 0) {
+            if (i + 1 >= argc) {
+                printf("--conf requires an argument\n");
+                return 1;
+            }
+            conf_path = argv[++i];
+        } else if (strcmp(argv[i], "--enc-profile") == 0) {
+            if (i + 1 >= argc) {
+                printf("--enc-profile requires an argument\n");
+                return 1;
+            }
+            encoder_key = argv[++i];
+        } else if (strcmp(argv[i], "--dec-profile") == 0) {
+            if (i + 1 >= argc) {
+                printf("--dec-profile requires an argument\n");
+                return 1;
+            }
+            decoder_key = argv[++i];
+        }
+    }
+
     PaError err = Pa_Initialize();
     if (err != paNoError) {
         printf("failed to initialize port audio, %s\n", Pa_GetErrorText(err));
@@ -161,20 +199,17 @@ int main(int argc, char **argv) {
 
     quiet_lwip_portaudio_driver_config *conf =
         calloc(1, sizeof(quiet_lwip_portaudio_driver_config));
-    const char *encoder_key = "audible-7k-channel-1";
-    const char *decoder_key = "audible-7k-channel-0";
-    const char *fname = "/usr/local/share/quiet/quiet-profiles.json";
     conf->encoder_opt =
-        quiet_encoder_profile_filename(fname, encoder_key);
+        quiet_encoder_profile_filename(conf_path, encoder_key);
     if (!conf->encoder_opt) {
-        printf("failed to read encoder profile '%s' from %s\n", encoder_key, fname);
+        printf("failed to read encoder profile '%s'\n", encoder_key);
         free(conf);
         return 1;
     }
     conf->decoder_opt =
-        quiet_decoder_profile_filename(fname, decoder_key);
+        quiet_decoder_profile_filename(conf_path, decoder_key);
     if (!conf->decoder_opt) {
-        printf("failed to read decoder profile '%s' from %s\n", decoder_key, fname);
+        printf("failed to read decoder profile '%s'\n", decoder_key);
         free(conf);
         return 1;
     }

@@ -278,6 +278,35 @@ int recv_connection(int socket_fd, struct lwip_sockaddr_in *recv_from) {
 }
 
 int main(int argc, char **argv) {
+    const char *profile_key = "cable-64k";
+    const char *conf_path = NULL;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0) {
+            printf("Usage: %s [--conf <path>] [--profile <name>]\n\n"
+                   "Options:\n"
+                   "  --conf <path>             path to quiet-profiles.json\n"
+                   "  --profile <name>          quiet profile to use (default: cable-64k)\n"
+                   "  --help                    show this help message\n", argv[0]);
+            return 0;
+        }
+    }
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--conf") == 0) {
+            if (i + 1 >= argc) {
+                printf("--conf requires an argument\n");
+                return 1;
+            }
+            conf_path = argv[++i];
+        } else if (strcmp(argv[i], "--profile") == 0) {
+            if (i + 1 >= argc) {
+                printf("--profile requires an argument\n");
+                return 1;
+            }
+            profile_key = argv[++i];
+        }
+    }
+
     signal(SIGPIPE, SIG_IGN);
     PaError err = Pa_Initialize();
     if (err != paNoError) {
@@ -287,20 +316,17 @@ int main(int argc, char **argv) {
 
     quiet_lwip_portaudio_driver_config *conf =
         calloc(1, sizeof(quiet_lwip_portaudio_driver_config));
-    const char *encoder_key = "cable-64k";
-    const char *decoder_key = "cable-64k";
-    const char *fname = "/usr/local/share/quiet/quiet-profiles.json";
     conf->encoder_opt =
-        quiet_encoder_profile_filename(fname, encoder_key);
+        quiet_encoder_profile_filename(conf_path, profile_key);
     if (!conf->encoder_opt) {
-        printf("failed to read encoder profile '%s' from %s\n", encoder_key, fname);
+        printf("failed to read encoder profile '%s' (path: %s)\n", profile_key, conf_path ? conf_path : "default");
         free(conf);
         return 1;
     }
     conf->decoder_opt =
-        quiet_decoder_profile_filename(fname, decoder_key);
+        quiet_decoder_profile_filename(conf_path, profile_key);
     if (!conf->decoder_opt) {
-        printf("failed to read decoder profile '%s' from %s\n", decoder_key, fname);
+        printf("failed to read decoder profile '%s' (path: %s)\n", profile_key, conf_path ? conf_path : "default");
         free(conf);
         return 1;
     }

@@ -51,9 +51,9 @@ void crossbar_add_for_reading(crossbar *c, relay_conn *conn);
 
 void crossbar_add_for_writing(crossbar *c, relay_conn *conn, size_t buflen);
 
-int native_errno();
+int native_errno(void);
 
-int lwip_errno();
+int lwip_errno(void);
 
 ssize_t _lwip_read(int desc, void *buf, size_t nbytes);
 
@@ -69,7 +69,7 @@ typedef struct {
     int (*select)(int num_fds, fd_set *read_fds, fd_set *write_fds,
                   fd_set *except_fds, struct timeval *timeout);
     int (*other_shutdown)(int fd, int how);
-    int (*get_errno)();
+    int (*get_errno)(void);
 } relay_t;
 
 pthread_t start_relay_thread(relay_t *relay_obj);
