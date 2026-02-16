@@ -60,3 +60,10 @@ add_custom_target(lwip-h ALL COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_
 add_custom_target(quiet-lwip-h ALL COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/include/quiet-lwip.h ${CMAKE_BINARY_DIR}/include/quiet-lwip.h)
 
 add_subdirectory(examples)
+
+install(TARGETS quiet_lwip ARCHIVE DESTINATION lib)
+install(DIRECTORY include/lwip DESTINATION include)
+install(FILES include/quiet-lwip.h DESTINATION include)
+if(PORTAUDIO)
+    install(FILES include/quiet-lwip-portaudio.h DESTINATION include)
+endif()
