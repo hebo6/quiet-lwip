@@ -1,0 +1,84 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - "*"
+  workflow_dispatch:
+
+jobs:
+  build-linux_x64:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libliquid-dev libfec-dev libjansson-dev libsndfile1-dev portaudio19-dev
+
+      - name: Install libquiet dependencies
+        run: |
+          curl -sL $(curl -s https://api.github.com/repos/hebo6/quiet/releases/latest | grep -o 'https://.*quiet-linux-x86_64.zip') -o quiet-linux-x86_64.zip
+          unzip quiet-linux-x86_64.zip
+          sudo cp -r quiet-linux-x86_64/lib/libquiet.* /usr/local/lib/
+          sudo cp -r quiet-linux-x86_64/include/* /usr/local/include/
+          sudo ldconfig
+
+      - name: Build and install
+        run: |
+          cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$PWD/dist
+          cmake --build build --target all examples
+          cmake --install build
+          cp -rT build/bin dist/bin
+
+      - name: Bundle shared libraries
+        run: |
+          LIB_PATTERN='libliquid|libjansson|libcorrect|libfec|libportaudio|libquiet'
+
+          bundle_deps() {
+            local dir="$1"
+            [ -d "$dir" ] || return
+            while true; do
+              new_found=0
+              for file in "$dir"/*; do
+                [ -f "$file" ] || continue
+                for lib in $(ldd "$file" 2>/dev/null | grep -E "$LIB_PATTERN" | awk '{print $3}'); do
+                  if [ -f "$lib" ] && [ ! -f "$dir/$(basename "$lib")" ]; then
+                    cp "$lib" "$dir/"
+                    new_found=1
+                  fi
+                done
+              done
+              [ "$new_found" -eq 0 ] && break
+            done
+          }
+
+          bundle_deps dist/lib
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiet-lwip-linux-x86_64
+          path: dist/
+
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    needs:
+      - build-linux_x64
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+      - name: zip
+        run: |
+          for i in */; do
+          zip -r "${i%/}.zip" "$i"
+          done
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.zip"
+          fail_on_unmatched_files: true
