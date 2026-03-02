@@ -1,5 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project (Quiet-LWIP)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 include(CheckLibraryExists)
 include(CheckIncludeFiles)
 include(FindPackageHandleStandardArgs)
