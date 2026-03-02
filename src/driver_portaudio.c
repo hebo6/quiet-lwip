@@ -1,4 +1,5 @@
 #include "quiet-lwip/driver_portaudio.h"
+#include "quiet-lwip.h"
 
 // lwip -> quiet: convert tx data frame to audio samples
 static err_t quiet_lwip_portaudio_encode_frame(struct netif *netif,

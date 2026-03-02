@@ -110,7 +110,7 @@ typedef uintptr_t  mem_ptr_t;
 
 #define LWIP_RAND() ((u32_t)rand())
 
-#if defined(LWIP_UNIX_ANDROID) && defined(FD_SET)
+#if defined(LWIP_UNIX_ANDROID) && defined(FD_SET) && __ANDROID_API__ < 21
     typedef __kernel_fd_set fd_set;
 #endif
 
