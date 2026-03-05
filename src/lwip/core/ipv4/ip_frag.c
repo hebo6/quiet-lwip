@@ -688,6 +688,12 @@ ip_frag(struct pbuf *p, struct netif *netif, ip_addr_t *dest)
   u16_t left_to_copy;
 #endif
 
+  /* Check MTU validity to prevent integer underflow */
+  if (mtu < IP_HLEN + 8) {
+    LWIP_DEBUGF(IP_REASS_DEBUG, ("ip_frag: MTU (%u) too small, must be at least %u\n", mtu, IP_HLEN + 8));
+    return ERR_VAL;
+  }
+
   /* Get a RAM based MTU sized pbuf */
 #if IP_FRAG_USES_STATIC_BUF
   /* When using a static buffer, we use a PBUF_REF, which we will
@@ -772,6 +778,12 @@ ip_frag(struct pbuf *p, struct netif *netif, ip_addr_t *dest)
     left_to_copy = cop;
     while (left_to_copy) {
       struct pbuf_custom_ref *pcr;
+      /* Check if we've reached the end of the pbuf chain */
+      if (p == NULL) {
+        LWIP_DEBUGF(IP_REASS_DEBUG, ("ip_frag: pbuf chain too short, expected %u more bytes\n", left_to_copy));
+        pbuf_free(rambuf);
+        return ERR_VAL;
+      }
       newpbuflen = (left_to_copy < p->len) ? left_to_copy : p->len;
       /* Is this pbuf already empty? */
       if (!newpbuflen) {
