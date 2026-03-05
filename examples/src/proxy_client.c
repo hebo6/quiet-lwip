@@ -64,6 +64,13 @@ int open_recv(const char *addr) {
         return -1;
     }
 
+    int reuse = 1;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+        printf("setsockopt SO_REUSEADDR failed\n");
+        close(socket_fd);
+        return -1;
+    }
+
     struct sockaddr_in *local_addr = calloc(1, sizeof(struct sockaddr_in));
     local_addr->sin_family = AF_INET;
     local_addr->sin_addr.s_addr = inet_addr(addr);
