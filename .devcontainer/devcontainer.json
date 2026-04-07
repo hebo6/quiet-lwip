@@ -1,0 +1,8 @@
+{
+	"name": "quiet-lwip",
+	"image": "mcr.microsoft.com/devcontainers/base:noble",
+	"mounts": [
+		"source=${localWorkspaceFolder}/../quiet,target=/quiet,type=bind,readonly"
+	],
+	"postCreateCommand": ".devcontainer/setup.sh"
+}
