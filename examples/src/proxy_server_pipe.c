@@ -58,6 +58,10 @@ static void write_all(int fd, const void *buf, size_t len) {
 static void *pipe_emit_loop(void *arg) {
     pipe_audio_args *args = (pipe_audio_args *)arg;
     quiet_sample_t *buf = malloc(args->sample_size * sizeof(quiet_sample_t));
+    // 模拟采样率时钟: 128 samples / 48000 Hz ≈ 2667 us
+    long interval_ns = (long)(args->sample_size * 1000000000LL / 48000);
+    struct timespec next;
+    clock_gettime(CLOCK_MONOTONIC, &next);
     for (;;) {
         ssize_t n = quiet_lwip_get_next_audio_packet(
             args->interface, buf, args->sample_size);
@@ -66,6 +70,12 @@ static void *pipe_emit_loop(void *arg) {
         } else if (atomic_load(&args->shutdown)) {
             break;
         }
+        next.tv_nsec += interval_ns;
+        if (next.tv_nsec >= 1000000000L) {
+            next.tv_sec++;
+            next.tv_nsec -= 1000000000L;
+        }
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL);
     }
     free(buf);
     pthread_exit(NULL);
@@ -403,17 +413,18 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    printf("opening pipe-out: %s\n", pipe_out_path);
-    int pipe_out_fd = open(pipe_out_path, O_WRONLY);
-    if (pipe_out_fd < 0) {
-        perror("failed to open pipe-out");
-        return 1;
-    }
+    // 先打开读端，与 client 的写端配对，避免 FIFO 死锁
     printf("opening pipe-in: %s\n", pipe_in_path);
     int pipe_in_fd = open(pipe_in_path, O_RDONLY);
     if (pipe_in_fd < 0) {
         perror("failed to open pipe-in");
-        close(pipe_out_fd);
+        return 1;
+    }
+    printf("opening pipe-out: %s\n", pipe_out_path);
+    int pipe_out_fd = open(pipe_out_path, O_WRONLY);
+    if (pipe_out_fd < 0) {
+        perror("failed to open pipe-out");
+        close(pipe_in_fd);
         return 1;
     }
     printf("pipes opened\n");

@@ -1,6 +1,8 @@
 {
 	"name": "quiet-lwip",
 	"image": "mcr.microsoft.com/devcontainers/base:noble",
+	"capAdd": ["SYS_PTRACE"],
+	"securityOpt": ["seccomp=unconfined"],
 	"mounts": [
 		"source=${localWorkspaceFolder}/../quiet,target=/quiet,type=bind,readonly"
 	],
