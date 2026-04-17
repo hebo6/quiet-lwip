@@ -37,7 +37,9 @@ jobs:
 
       - name: Bundle shared libraries
         run: |
-          LIB_PATTERN='libliquid|libjansson|libcorrect|libfec|libportaudio|libquiet'
+          sudo apt-get install -y patchelf
+
+          LIB_PATTERN='libliquid|libjansson|libcorrect|libfec|libportaudio|libquiet|libfftw3'
 
           bundle_deps() {
             local dir="$1"
@@ -58,6 +60,12 @@ jobs:
           }
 
           bundle_deps dist/lib
+
+          # 让 bin/ 里的可执行文件从相邻的 lib/ 查找 .so，产物自包含
+          for f in dist/bin/*; do
+            [ -f "$f" ] && [ -x "$f" ] || continue
+            patchelf --set-rpath '$ORIGIN/../lib' "$f"
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
