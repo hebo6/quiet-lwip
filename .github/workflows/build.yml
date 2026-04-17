@@ -61,10 +61,14 @@ jobs:
 
           bundle_deps dist/lib
 
-          # 让 bin/ 里的可执行文件从相邻的 lib/ 查找 .so，产物自包含
+          # 让产物自包含：bin 从 ../lib 查找，lib 里的 .so 互相从 $ORIGIN 查找
           for f in dist/bin/*; do
             [ -f "$f" ] && [ -x "$f" ] || continue
             patchelf --set-rpath '$ORIGIN/../lib' "$f"
+          done
+          for f in dist/lib/*.so*; do
+            [ -f "$f" ] || continue
+            patchelf --set-rpath '$ORIGIN' "$f" 2>/dev/null || true
           done
 
       - name: Upload artifacts
