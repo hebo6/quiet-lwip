@@ -21,7 +21,8 @@ jobs:
 
       - name: Install libquiet dependencies
         run: |
-          curl -sL $(curl -s https://api.github.com/repos/hebo6/quiet/releases/latest | grep -o 'https://.*quiet-linux-x86_64.zip') -o quiet-linux-x86_64.zip
+          curl -fsSL -o quiet-linux-x86_64.zip \
+            https://github.com/hebo6/quiet/releases/latest/download/quiet-linux-x86_64.zip
           unzip quiet-linux-x86_64.zip
           sudo cp -r quiet-linux-x86_64/lib/libquiet.* /usr/local/lib/
           sudo cp -r quiet-linux-x86_64/include/* /usr/local/include/
