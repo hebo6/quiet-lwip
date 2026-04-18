@@ -77,11 +77,72 @@ jobs:
           name: quiet-lwip-linux-x86_64
           path: dist/
 
+  build-android-arm64-v8a:
+    runs-on: ubuntu-latest
+    env:
+      ABI: arm64-v8a
+      API: "24"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Android NDK
+        id: android-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+
+      - name: Install build tools
+        run: |
+          sudo apt update
+          sudo apt install -y cmake build-essential unzip curl
+
+      - name: Download libquiet Android release
+        run: |
+          curl -fsSL -o quiet-android-arm64-v8a.zip \
+            https://github.com/hebo6/quiet/releases/latest/download/quiet-android-arm64-v8a.zip
+          unzip -q quiet-android-arm64-v8a.zip
+          mkdir -p prefix
+          cp -r quiet-android-arm64-v8a/include prefix/
+          cp -r quiet-android-arm64-v8a/lib prefix/
+
+      - name: Cross-compile quiet-lwip
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.android-ndk.outputs.ndk-path }}
+        run: |
+          set -euxo pipefail
+          PREFIX=$PWD/prefix
+          cmake -S . -B build-android \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=$ABI \
+            -DANDROID_PLATFORM=android-$API \
+            -DCMAKE_FIND_ROOT_PATH=$PREFIX \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH \
+            -DCMAKE_SHARED_LINKER_FLAGS="-L$PREFIX/lib"
+          cmake --build build-android --target quiet_lwip_shared -j$(nproc)
+
+      - name: Assemble Android dist
+        run: |
+          set -euxo pipefail
+          DIST=dist/android/$ABI
+          mkdir -p $DIST/lib $DIST/include/quiet-lwip
+          cp build-android/lib/libquiet_lwip.so $DIST/lib/
+          cp include/quiet-lwip.h $DIST/include/
+          cp include/quiet-lwip/lwip-socket.h $DIST/include/quiet-lwip/
+          cp -r include/lwip $DIST/include/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiet-lwip-android-arm64-v8a
+          path: dist/android/arm64-v8a/
+
   release:
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
     needs:
       - build-linux_x64
+      - build-android-arm64-v8a
     steps:
       - name: Download packages
         uses: actions/download-artifact@v4
@@ -93,5 +154,7 @@ jobs:
       - name: release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'nightly' }}
           files: "*.zip"
           fail_on_unmatched_files: true
+          make_latest: "true"
