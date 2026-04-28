@@ -1,15 +1,17 @@
 #include <math.h>
 #include <stdint.h>
 #include <time.h>
-#include <unistd.h>
 #include <string.h>
-#include <signal.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
+
+#include "native_socket_compat.h"
+
+#ifndef _WIN32
+#include <signal.h>
+#endif
 
 #include "quiet-lwip-portaudio.h"
 
@@ -45,7 +47,7 @@ int open_send(const char *addr) {
 
     struct lwip_sockaddr_in remote;
     remote.sin_family = AF_INET;
-    remote.sin_addr.s_addr = inet_addr(addr);
+    *((uint32_t *)&remote.sin_addr) = inet_addr(addr);
     remote.sin_port = htons(remote_port);
     int res = lwip_connect(socket_fd, (struct lwip_sockaddr*)&remote, sizeof(remote));
 
@@ -65,9 +67,9 @@ int open_recv(const char *addr) {
     }
 
     int reuse = 1;
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&reuse, sizeof(reuse)) < 0) {
         printf("setsockopt SO_REUSEADDR failed\n");
-        close(socket_fd);
+        native_close(socket_fd);
         return -1;
     }
 
@@ -140,7 +142,17 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+#ifdef _WIN32
+    {
+        WSADATA wsa;
+        if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+            printf("WSAStartup failed\n");
+            return 1;
+        }
+    }
+#else
     signal(SIGPIPE, SIG_IGN);
+#endif
     PaError err = Pa_Initialize();
     if (err != paNoError) {
         printf("failed to initialize port audio, %s\n", Pa_GetErrorText(err));
@@ -221,9 +233,9 @@ int main(int argc, char **argv) {
         .other_agent = agent_lwip,
         .incoming = &client_crossbar,
         .outgoing = &remote_crossbar,
-        .read = read,
-        .write = write,
-        .select = select,
+        .read = native_read,
+        .write = native_write,
+        .select = native_select,
         .other_shutdown = lwip_shutdown,
         .get_errno = native_errno,
     };
@@ -236,7 +248,7 @@ int main(int argc, char **argv) {
         .read = _lwip_read,
         .write = _lwip_write,
         .select = lwip_select,
-        .other_shutdown = shutdown,
+        .other_shutdown = native_shutdown,
         .get_errno = lwip_errno,
     };
 
@@ -265,7 +277,7 @@ int main(int argc, char **argv) {
         int remote_fd = open_send(proxy_addr);
 
         if (remote_fd < 0) {
-            close(conn_fd);
+            native_close(conn_fd);
             printf("remote connect failed\n");
             continue;
         }

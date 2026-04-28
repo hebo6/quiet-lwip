@@ -20,6 +20,9 @@ add_library(relay STATIC EXCLUDE_FROM_ALL src/relay.c)
 
 add_executable(proxy_client EXCLUDE_FROM_ALL src/proxy_client.c)
 target_link_libraries(proxy_client quiet_lwip relay)
+if(WIN32)
+  target_link_libraries(proxy_client ws2_32)
+endif()
 set(buildable_examples ${buildable_examples} proxy_client)
 
 add_executable(proxy_server EXCLUDE_FROM_ALL src/proxy_server.c)

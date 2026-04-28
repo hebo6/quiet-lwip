@@ -32,7 +32,9 @@
 #ifndef LWIP_ARCH_PERF_H
 #define LWIP_ARCH_PERF_H
 
+#ifndef _WIN32
 #include <sys/times.h>
+#endif
 
 #ifdef PERF
 #define PERF_START  { \
@@ -56,7 +58,9 @@ void perf_print(unsigned long c1l, unsigned long c1h,
 		unsigned long c2l, unsigned long c2h,
 		char *key);
 
+#ifndef _WIN32
 void perf_print_times(struct tms *start, struct tms *end, char *key);
+#endif
 
 void perf_init(char *fname);
 

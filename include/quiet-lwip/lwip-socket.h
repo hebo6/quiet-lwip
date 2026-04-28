@@ -1,11 +1,20 @@
 #ifndef QUIET_LWIP_SOCKET_H
 #define QUIET_LWIP_SOCKET_H
 #include <stdint.h>
+#ifndef _WIN32
 #include <netinet/in.h>
+#endif
+
+#pragma push_macro("s_addr")
+#ifdef s_addr
+#undef s_addr
+#endif
 
 struct lwip_in_addr {
   uint32_t s_addr;
 };
+
+#pragma pop_macro("s_addr")
 
 struct lwip_sockaddr_in {
   uint8_t sin_len;

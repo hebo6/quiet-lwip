@@ -4,9 +4,9 @@ relay_conn *relay_conn_create(int native_fd, int lwip_fd, size_t buf_len) {
     relay_conn *conn = calloc(1, sizeof(relay_conn));
 
     conn->fds[agent_native] = native_fd;
-    fcntl(native_fd, F_SETFL, O_NONBLOCK);
+    native_set_nonblock(native_fd);
     conn->fds[agent_lwip] = lwip_fd;
-    lwip_fcntl(lwip_fd, F_SETFL, O_NONBLOCK);
+    lwip_fcntl(lwip_fd, LWIP_F_SETFL, LWIP_O_NONBLOCK);
 
     for (size_t i = 0; i < 2; i++) {
         conn->bufs[i] = malloc(buf_len * sizeof(uint8_t));
@@ -48,7 +48,7 @@ void relay_conn_destroy(relay_conn *conn) {
     }
 
     lwip_close(conn->fds[agent_lwip]);
-    close(conn->fds[agent_native]);
+    native_close(conn->fds[agent_native]);
 
     free(conn);
 }
@@ -91,7 +91,7 @@ void crossbar_add_for_writing(crossbar *c, relay_conn *conn, size_t buflen) {
 }
 
 int native_errno() {
-    return errno;
+    return native_get_errno();
 }
 
 int lwip_errno() {

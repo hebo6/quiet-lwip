@@ -1,13 +1,10 @@
-#include <unistd.h>
+#include "native_socket_compat.h"
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdatomic.h>
 
