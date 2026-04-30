@@ -2,3 +2,4 @@
 build/
 build-dev
 build-win64/
+build-linux64
