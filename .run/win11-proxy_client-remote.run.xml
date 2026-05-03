@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="win11-proxy_client-remote" type="CLion_Remote" version="1" remoteCommand="10.245.160.127:1234" symbolFile="" sysroot="">
+    <debugger kind="GDB" isBundled="true" />
+    <method v="2" />
+  </configuration>
+</component>
