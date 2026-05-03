@@ -59,7 +59,8 @@ static struct pbuf *quiet_lwip_fetch_single_frame(struct netif *netif) {
         struct timeval now;
         gettimeofday(&now, NULL);
         char fmt[64], buf[64];
-        struct tm *tminfo = localtime(&now.tv_sec);
+        time_t now_sec = now.tv_sec;
+        struct tm *tminfo = localtime(&now_sec);
         strftime(fmt, sizeof(fmt), "%Y-%m-%d %H:%M:%S.%%006u %z", tminfo);
         snprintf(buf, sizeof(buf), fmt, now.tv_usec);
         printf("received frame @ %s: ", buf);

@@ -1,6 +1,41 @@
 cmake_minimum_required (VERSION 2.6)
 project (Quiet-LWIP)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# 同级仓库（liquid-dsp / quiet）+ build-win64/src 下的 jansson、portaudio 源码一次性联编。
+# quiet/CMakeLists.txt 与本文件下方的 quiet/portaudio find_library 都已用 if(NOT TARGET ...) 守卫，
+# 子项目创建的 target 会优先生效。
+if(NOT TARGET liquid)
+    set(QUIET_PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "")
+    set(QUIET_SUBDEPS_SRC  "${QUIET_PROJECT_ROOT}/build-win64/src" CACHE PATH "")
+
+    set(BUILD_EXAMPLES        OFF CACHE BOOL "" FORCE)
+    set(BUILD_AUTOTESTS       OFF CACHE BOOL "" FORCE)
+    set(BUILD_BENCHMARKS      OFF CACHE BOOL "" FORCE)
+    set(BUILD_SANDBOX         OFF CACHE BOOL "" FORCE)
+    set(BUILD_DOC             OFF CACHE BOOL "" FORCE)
+    set(ENABLE_SIMD           OFF CACHE BOOL "" FORCE)
+    set(FIND_SIMD             OFF CACHE BOOL "" FORCE)
+    set(JANSSON_BUILD_DOCS    OFF CACHE BOOL "" FORCE)
+    set(JANSSON_EXAMPLES      OFF CACHE BOOL "" FORCE)
+    set(JANSSON_WITHOUT_TESTS ON  CACHE BOOL "" FORCE)
+    set(PA_USE_WASAPI         ON  CACHE BOOL "" FORCE)
+    set(PA_USE_WMME           ON  CACHE BOOL "" FORCE)
+    set(PA_USE_DS             OFF CACHE BOOL "" FORCE)
+
+    add_subdirectory(${QUIET_PROJECT_ROOT}/liquid-dsp     ${CMAKE_BINARY_DIR}/_deps/liquid-dsp)
+    add_subdirectory(${QUIET_SUBDEPS_SRC}/jansson-2.14    ${CMAKE_BINARY_DIR}/_deps/jansson)
+    # jansson 2.14 用旧式 include_directories，不会通过 target_link_libraries 传播头文件
+    target_include_directories(jansson INTERFACE
+        $<BUILD_INTERFACE:${QUIET_SUBDEPS_SRC}/jansson-2.14/src>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/_deps/jansson/include>)
+    add_subdirectory(${QUIET_SUBDEPS_SRC}/portaudio       ${CMAKE_BINARY_DIR}/_deps/portaudio)
+    add_subdirectory(${QUIET_PROJECT_ROOT}/quiet          ${CMAKE_BINARY_DIR}/_deps/quiet)
+    # quiet 同样用旧式 include_directories
+    target_include_directories(quiet INTERFACE
+        $<BUILD_INTERFACE:${QUIET_PROJECT_ROOT}/quiet/include>)
+endif()
+
 include(CheckLibraryExists)
 include(CheckIncludeFiles)
 include(FindPackageHandleStandardArgs)
@@ -42,7 +77,11 @@ set(CMAKE_THREAD_PREFER_PTHREAD ON)
 find_package(Threads)
 set(CORE_DEPENDENCIES quiet ${CMAKE_THREAD_LIBS_INIT})
 
-find_library(PORTAUDIO portaudio)
+if(TARGET portaudio)
+    set(PORTAUDIO portaudio)
+else()
+    find_library(PORTAUDIO portaudio)
+endif()
 if (PORTAUDIO)
   set(SRCFILES ${SRCFILES} src/driver_portaudio.c)
   add_definitions(-DQUIET_PORTAUDIO=1)
