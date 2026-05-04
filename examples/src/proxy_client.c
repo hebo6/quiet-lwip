@@ -61,6 +61,8 @@ int open_send(const char *addr) {
 int open_recv(const char *addr) {
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
+    printf("[DEBUG] open_recv: socket() returned %d\n", socket_fd);
+    fflush(stdout);
     if (socket_fd < 0) {
         printf("socket failed\n");
         return -1;
@@ -79,6 +81,8 @@ int open_recv(const char *addr) {
     local_addr->sin_port = htons(local_port);
 
     int res = bind(socket_fd, (struct sockaddr *)local_addr, sizeof(struct sockaddr_in));
+    printf("[DEBUG] open_recv: bind() returned %d\n", res);
+    fflush(stdout);
     free(local_addr);
 
     if (res < 0) {
@@ -87,6 +91,8 @@ int open_recv(const char *addr) {
     }
 
     res = listen(socket_fd, 1);
+    printf("[DEBUG] open_recv: listen() returned %d, socket_fd=%d\n", res, socket_fd);
+    fflush(stdout);
 
     if (res < 0) {
         printf("listen failed\n");
@@ -97,8 +103,17 @@ int open_recv(const char *addr) {
 }
 
 int recv_connection(int socket_fd, struct sockaddr_in *recv_from) {
-    socklen_t recv_from_len = sizeof(recv_from);
-    return accept(socket_fd, (struct sockaddr *)recv_from, &recv_from_len);
+    socklen_t recv_from_len = sizeof(*recv_from);
+    printf("[DEBUG] recv_connection: calling accept(fd=%d, addrlen=%u)...\n", socket_fd, (unsigned)recv_from_len);
+    fflush(stdout);
+    int result = accept(socket_fd, (struct sockaddr *)recv_from, &recv_from_len);
+#ifdef _WIN32
+    printf("[DEBUG] recv_connection: accept() returned %d, WSAGetLastError=%d\n", result, WSAGetLastError());
+#else
+    printf("[DEBUG] recv_connection: accept() returned %d, errno=%d\n", result, errno);
+#endif
+    fflush(stdout);
+    return result;
 }
 
 int main(int argc, char **argv) {
