@@ -2,3 +2,5 @@ build/
 build-dev
 build-win64/
 build-linux64
+build-win64-debug
+cmake-build-debug
