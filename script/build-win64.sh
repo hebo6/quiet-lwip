@@ -29,14 +29,16 @@ cmake -S "$ROOT/quiet-lwip" -B "$BUILD" \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
-stage "build proxy_client"
-cmake --build "$BUILD" -j "$JOBS" --target proxy_client
+stage "build proxy_client / proxy_server"
+cmake --build "$BUILD" -j "$JOBS" --target proxy_client proxy_server
 
 stage "pack dist"
 EXE=$BUILD/bin/proxy_client.exe
+EXE_SRV=$BUILD/bin/proxy_server.exe
 DIST=$BUILD/dist
 mkdir -p "$DIST"
 cp "$EXE" "$DIST/"
+cp "$EXE_SRV" "$DIST/"
 find "$BUILD/external" -type f -name '*.dll' -exec cp -v {} "$DIST/" \;
 
 cp -v /usr/x86_64-w64-mingw32/bin/libwinpthread-1.dll "$DIST/"
@@ -45,13 +47,15 @@ cp -v /usr/x86_64-w64-mingw32/bin/libgcc_s_seh-1.dll  "$DIST/"
 cp "$ROOT/quiet/quiet-profiles.json" "$DIST/quiet-profiles.json"
 
 stage "verify"
-x86_64-w64-mingw32-objdump -f "$EXE" | grep -E 'file format|architecture'
-echo
-x86_64-w64-mingw32-objdump -p "$EXE" | grep 'DLL Name'
-if x86_64-w64-mingw32-objdump -p "$EXE" | grep -qi 'msvcrt.dll'; then
-    echo 'FAIL: msvcrt.dll detected (UCRT switch broken)' >&2
-    exit 1
-fi
+for f in "$EXE" "$EXE_SRV"; do
+    echo "-- $f --"
+    x86_64-w64-mingw32-objdump -f "$f" | grep -E 'file format|architecture'
+    x86_64-w64-mingw32-objdump -p "$f" | grep 'DLL Name'
+    if x86_64-w64-mingw32-objdump -p "$f" | grep -qi 'msvcrt.dll'; then
+        echo 'FAIL: msvcrt.dll detected (UCRT switch broken)' >&2
+        exit 1
+    fi
+done
 echo
 ls -la "$DIST"
 echo

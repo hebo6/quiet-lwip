@@ -1,17 +1,17 @@
 #include <math.h>
 #include <stdint.h>
 #include <time.h>
-#include <unistd.h>
 #include <string.h>
-#include <signal.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <stdatomic.h>
-#include <errno.h>
-#include <fcntl.h>
+
+#include "native_socket_compat.h"
+
+#ifndef _WIN32
+#include <signal.h>
+#endif
 
 #include "quiet-lwip-portaudio.h"
 
@@ -155,7 +155,7 @@ int socks_request_connect_domainname(int socket_fd, uint8_t *buf, size_t buf_len
             break;
         }
 
-        close(remote_fd);
+        native_close(remote_fd);
         remote_fd = -1;
     }
 
@@ -251,7 +251,7 @@ int open_recv(const char *addr) {
 
     struct lwip_sockaddr_in *local_addr = calloc(1, sizeof(struct lwip_sockaddr_in));
     local_addr->sin_family = AF_INET;
-    local_addr->sin_addr.s_addr = inet_addr(addr);
+    *((uint32_t *)&local_addr->sin_addr) = inet_addr(addr);
     local_addr->sin_port = htons(local_port);
 
     int res = lwip_bind(socket_fd, (struct lwip_sockaddr *)local_addr, sizeof(struct lwip_sockaddr_in));
@@ -307,7 +307,17 @@ int main(int argc, char **argv) {
         }
     }
 
+#ifdef _WIN32
+    {
+        WSADATA wsa;
+        if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+            printf("WSAStartup failed\n");
+            return 1;
+        }
+    }
+#else
     signal(SIGPIPE, SIG_IGN);
+#endif
     PaError err = Pa_Initialize();
     if (err != paNoError) {
         printf("failed to initialize port audio, %s\n", Pa_GetErrorText(err));
@@ -391,7 +401,7 @@ int main(int argc, char **argv) {
         .read = _lwip_read,
         .write = _lwip_write,
         .select = lwip_select,
-        .other_shutdown = shutdown,
+        .other_shutdown = native_shutdown,
         .get_errno = lwip_errno,
     };
 
@@ -400,9 +410,9 @@ int main(int argc, char **argv) {
         .other_agent = agent_lwip,
         .incoming = &remote_crossbar,
         .outgoing = &client_crossbar,
-        .read = read,
-        .write = write,
-        .select = select,
+        .read = native_read,
+        .write = native_write,
+        .select = native_select,
         .other_shutdown = lwip_shutdown,
         .get_errno = native_errno,
     };
@@ -427,7 +437,7 @@ int main(int argc, char **argv) {
         }
 
         struct in_addr local_domain;
-        local_domain.s_addr = recv_from.sin_addr.s_addr;
+        *((uint32_t *)&local_domain) = *((uint32_t *)&recv_from.sin_addr);
 
         printf("received connection from %s\n", inet_ntoa(local_domain));
 

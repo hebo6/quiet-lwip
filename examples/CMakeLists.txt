@@ -27,6 +27,9 @@ set(buildable_examples ${buildable_examples} proxy_client)
 
 add_executable(proxy_server EXCLUDE_FROM_ALL src/proxy_server.c)
 target_link_libraries(proxy_server quiet_lwip relay)
+if(WIN32)
+  target_link_libraries(proxy_server ws2_32)
+endif()
 set(buildable_examples ${buildable_examples} proxy_server)
 
 add_custom_target(examples DEPENDS ${buildable_examples})
