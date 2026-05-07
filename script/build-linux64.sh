@@ -35,8 +35,7 @@ cp "$EXE" "$DIST/proxy_client"
 find "$BUILD/external" -type f \( -name '*.so' -o -name '*.so.*' \) -exec cp -P {} "$DIST/lib/" \;
 find "$BUILD/external" -type l \( -name '*.so' -o -name '*.so.*' \) -exec cp -P {} "$DIST/lib/" \;
 
-cp "$ROOT/org.quietmodem.Quiet/quiet/src/main/res/raw/quiet_profiles.json" \
-   "$DIST/quiet-profiles.json"
+cp "$ROOT/quiet/quiet-profiles.json" "$DIST/quiet-profiles.json"
 
 cat > "$DIST/run.sh" <<'EOF'
 #!/usr/bin/env bash
