@@ -52,6 +52,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #include "lwip/def.h"
 
@@ -105,9 +108,14 @@ struct sys_mbox {
 
 struct sys_sem {
   unsigned int c;
+#ifdef _WIN32
+  CRITICAL_SECTION mutex;
+  CONDITION_VARIABLE cond;
+#else
   pthread_condattr_t condattr;
   pthread_cond_t cond;
   pthread_mutex_t mutex;
+#endif
 };
 
 struct sys_thread {
@@ -376,12 +384,17 @@ sys_sem_new_internal(u8_t count)
   sem = (struct sys_sem *)malloc(sizeof(struct sys_sem));
   if (sem != NULL) {
     sem->c = count;
+#ifdef _WIN32
+    InitializeCriticalSection(&(sem->mutex));
+    InitializeConditionVariable(&(sem->cond));
+#else
     pthread_condattr_init(&(sem->condattr));
 #if !(defined(LWIP_UNIX_MACH) || (defined(LWIP_UNIX_ANDROID) && __ANDROID_API__ < 21))
     pthread_condattr_setclock(&(sem->condattr), CLOCK_MONOTONIC);
 #endif
     pthread_cond_init(&(sem->cond), &(sem->condattr));
     pthread_mutex_init(&(sem->mutex), NULL);
+#endif
   }
   return sem;
 }
@@ -397,6 +410,7 @@ sys_sem_new(struct sys_sem **sem, u8_t count)
   return ERR_OK;
 }
 /*-----------------------------------------------------------------------------------*/
+#ifndef _WIN32
 static u32_t
 cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, u32_t timeout)
 {
@@ -438,6 +452,31 @@ cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex, u32_t timeout)
   }
   return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
 }
+#else /* _WIN32: winpthread 的 pthread_condattr_setclock(CLOCK_MONOTONIC) 是
+         no-op，cond 内部一律按 CLOCK_REALTIME 算超时，无法直接用。
+         改用 Win32 原生 SleepConditionVariableCS：相对超时 + 内部 GetTickCount64，
+         单调，不受墙钟跳变影响。 */
+static u32_t
+cond_wait_win32(CONDITION_VARIABLE *cond, CRITICAL_SECTION *mutex, u32_t timeout)
+{
+  ULONGLONG t0, t1;
+  DWORD wait_ms;
+  BOOL ok;
+
+  wait_ms = (timeout == 0) ? INFINITE : (DWORD)timeout;
+  t0 = GetTickCount64();
+  ok = SleepConditionVariableCS(cond, mutex, wait_ms);
+  if (!ok) {
+    if (GetLastError() == ERROR_TIMEOUT) {
+      return SYS_ARCH_TIMEOUT;
+    }
+    /* 其他错误极罕见（比如 cond 被销毁），按超时返回最稳。 */
+    return SYS_ARCH_TIMEOUT;
+  }
+  t1 = GetTickCount64();
+  return (u32_t)(t1 - t0);
+}
+#endif
 /*-----------------------------------------------------------------------------------*/
 u32_t
 sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
@@ -447,6 +486,23 @@ sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
   LWIP_ASSERT("invalid sem", (s != NULL) && (*s != NULL));
   sem = *s;
 
+#ifdef _WIN32
+  EnterCriticalSection(&(sem->mutex));
+  while (sem->c <= 0) {
+    if (timeout > 0) {
+      time_needed = cond_wait_win32(&(sem->cond), &(sem->mutex), timeout);
+      if (time_needed == SYS_ARCH_TIMEOUT) {
+        LeaveCriticalSection(&(sem->mutex));
+        return SYS_ARCH_TIMEOUT;
+      }
+    } else {
+      cond_wait_win32(&(sem->cond), &(sem->mutex), 0);
+    }
+  }
+  sem->c--;
+  LeaveCriticalSection(&(sem->mutex));
+  return (u32_t)time_needed;
+#else
   pthread_mutex_lock(&(sem->mutex));
   while (sem->c <= 0) {
     if (timeout > 0) {
@@ -465,6 +521,7 @@ sys_arch_sem_wait(struct sys_sem **s, u32_t timeout)
   sem->c--;
   pthread_mutex_unlock(&(sem->mutex));
   return (u32_t)time_needed;
+#endif
 }
 /*-----------------------------------------------------------------------------------*/
 void
@@ -474,6 +531,15 @@ sys_sem_signal(struct sys_sem **s)
   LWIP_ASSERT("invalid sem", (s != NULL) && (*s != NULL));
   sem = *s;
 
+#ifdef _WIN32
+  EnterCriticalSection(&(sem->mutex));
+  sem->c++;
+  if (sem->c > 1) {
+    sem->c = 1;
+  }
+  WakeAllConditionVariable(&(sem->cond));
+  LeaveCriticalSection(&(sem->mutex));
+#else
   pthread_mutex_lock(&(sem->mutex));
   sem->c++;
 
@@ -483,14 +549,20 @@ sys_sem_signal(struct sys_sem **s)
 
   pthread_cond_broadcast(&(sem->cond));
   pthread_mutex_unlock(&(sem->mutex));
+#endif
 }
 /*-----------------------------------------------------------------------------------*/
 static void
 sys_sem_free_internal(struct sys_sem *sem)
 {
+#ifdef _WIN32
+  /* CONDITION_VARIABLE 无显式销毁；CRITICAL_SECTION 需 Delete。 */
+  DeleteCriticalSection(&(sem->mutex));
+#else
   pthread_cond_destroy(&(sem->cond));
   pthread_condattr_destroy(&(sem->condattr));
   pthread_mutex_destroy(&(sem->mutex));
+#endif
   free(sem);
 }
 /*-----------------------------------------------------------------------------------*/
@@ -507,10 +579,16 @@ sys_sem_free(struct sys_sem **sem)
 u32_t
 sys_now(void)
 {
+#ifdef _WIN32
+  /* GetTickCount64：单调（机器启动以来 ms），不受墙钟跳变影响。截到 32 位对
+     lwip 的 timer 差值计算来说是预期的（lwip 用 (a-b) 形式抗回绕）。 */
+  return (u32_t)GetTickCount64();
+#else
   struct timespec ts;
 
   get_monotonic_time(&ts);
   return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+#endif
 }
 /*-----------------------------------------------------------------------------------*/
 void
