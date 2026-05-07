@@ -29,12 +29,4 @@ add_executable(proxy_server EXCLUDE_FROM_ALL src/proxy_server.c)
 target_link_libraries(proxy_server quiet_lwip relay)
 set(buildable_examples ${buildable_examples} proxy_server)
 
-add_executable(proxy_client_pipe EXCLUDE_FROM_ALL src/proxy_client_pipe.c)
-target_link_libraries(proxy_client_pipe quiet_lwip relay)
-set(buildable_examples ${buildable_examples} proxy_client_pipe)
-
-add_executable(proxy_server_pipe EXCLUDE_FROM_ALL src/proxy_server_pipe.c)
-target_link_libraries(proxy_server_pipe quiet_lwip relay)
-set(buildable_examples ${buildable_examples} proxy_server_pipe)
-
 add_custom_target(examples DEPENDS ${buildable_examples})
