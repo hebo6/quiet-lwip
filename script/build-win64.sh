@@ -37,7 +37,7 @@ EXE=$BUILD/bin/proxy_client.exe
 DIST=$BUILD/dist
 mkdir -p "$DIST"
 cp "$EXE" "$DIST/"
-find "$BUILD/_deps" -type f -name '*.dll' -exec cp -v {} "$DIST/" \;
+find "$BUILD/external" -type f -name '*.dll' -exec cp -v {} "$DIST/" \;
 
 cp -v /usr/x86_64-w64-mingw32/bin/libwinpthread-1.dll "$DIST/"
 cp -v /usr/x86_64-w64-mingw32/bin/libgcc_s_seh-1.dll  "$DIST/"

@@ -25,14 +25,14 @@ if(NOT TARGET liquid)
         set(PA_USE_DS     OFF CACHE BOOL "" FORCE)
     endif()
 
-    add_subdirectory(${QUIET_PROJECT_ROOT}/liquid-dsp     ${CMAKE_BINARY_DIR}/_deps/liquid-dsp)
-    add_subdirectory(${QUIET_SUBDEPS_SRC}/jansson-2.14    ${CMAKE_BINARY_DIR}/_deps/jansson)
+    add_subdirectory(${QUIET_PROJECT_ROOT}/liquid-dsp     ${CMAKE_BINARY_DIR}/external/liquid-dsp)
+    add_subdirectory(${QUIET_SUBDEPS_SRC}/jansson-2.14    ${CMAKE_BINARY_DIR}/external/jansson)
     # jansson 2.14 用旧式 include_directories，不会通过 target_link_libraries 传播头文件
     target_include_directories(jansson INTERFACE
         $<BUILD_INTERFACE:${QUIET_SUBDEPS_SRC}/jansson-2.14/src>
-        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/_deps/jansson/include>)
-    add_subdirectory(${QUIET_SUBDEPS_SRC}/portaudio       ${CMAKE_BINARY_DIR}/_deps/portaudio)
-    add_subdirectory(${QUIET_PROJECT_ROOT}/quiet          ${CMAKE_BINARY_DIR}/_deps/quiet)
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/external/jansson/include>)
+    add_subdirectory(${QUIET_SUBDEPS_SRC}/portaudio       ${CMAKE_BINARY_DIR}/external/portaudio)
+    add_subdirectory(${QUIET_PROJECT_ROOT}/quiet          ${CMAKE_BINARY_DIR}/external/quiet)
     # quiet 同样用旧式 include_directories
     target_include_directories(quiet INTERFACE
         $<BUILD_INTERFACE:${QUIET_PROJECT_ROOT}/quiet/include>)

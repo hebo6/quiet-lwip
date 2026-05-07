@@ -31,9 +31,9 @@ DIST=$BUILD/dist
 mkdir -p "$DIST/lib"
 cp "$EXE" "$DIST/proxy_client"
 
-# 收集 _deps 下所有 .so / .so.* 到 dist/lib
-find "$BUILD/_deps" -type f \( -name '*.so' -o -name '*.so.*' \) -exec cp -P {} "$DIST/lib/" \;
-find "$BUILD/_deps" -type l \( -name '*.so' -o -name '*.so.*' \) -exec cp -P {} "$DIST/lib/" \;
+# 收集 external 下所有 .so / .so.* 到 dist/lib
+find "$BUILD/external" -type f \( -name '*.so' -o -name '*.so.*' \) -exec cp -P {} "$DIST/lib/" \;
+find "$BUILD/external" -type l \( -name '*.so' -o -name '*.so.*' \) -exec cp -P {} "$DIST/lib/" \;
 
 cp "$ROOT/org.quietmodem.Quiet/quiet/src/main/res/raw/quiet_profiles.json" \
    "$DIST/quiet-profiles.json"
